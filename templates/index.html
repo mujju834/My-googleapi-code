@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Voice Magic Assistant</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    /* Background Animation */
+    body {
+      background: linear-gradient(135deg, #000428, #004e92);
+      background-size: 200% 200%;
+      animation: gradientMove 10s ease infinite;
+      color: white;
+    }
+
+    @keyframes gradientMove {
+      0% {
+        background-position: 0% 50%;
+      }
+
+      50% {
+        background-position: 100% 50%;
+      }
+
+      100% {
+        background-position: 0% 50%;
+      }
+    }
+
+    /* Animated Spinner */
+    .custom-spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid rgba(255, 255, 255, 0.3);
+      border-top-color: #f8b500;
+      border-radius: 50%;
+      animation: spinner 1.5s linear infinite;
+    }
+
+    @keyframes spinner {
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* Custom Buttons */
+    .custom-button {
+      background: linear-gradient(45deg, #ff512f, #f09819);
+      color: white;
+      font-weight: bold;
+      padding: 10px 15px;
+      border-radius: 8px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .custom-button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 12px rgba(255, 81, 47, 0.5);
+    }
+
+    /* Centered Flex */
+    .flex-center {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen">
+
+  <div class="container mx-auto py-8 px-4 sm:px-6 lg:px-8">
+    <div class="bg-white bg-opacity-10 shadow-2xl rounded-lg p-6 sm:p-8 lg:p-12 max-w-4xl mx-auto">
+      <!-- Header Section -->
+      <div class="text-center mb-10">
+        <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 leading-tight">Voice Magic Assistant</h1>
+        <p class="text-base sm:text-lg lg:text-xl text-gray-300">Seamlessly generate audio, transcribe, and record speech using our assistant.</p>
+      </div>
+
+      <!-- Text to Speech Section -->
+      <div class="mb-12">
+        <h2 class="text-xl sm:text-2xl font-bold mb-4 text-gray-100">Text to Speech</h2>
+        <textarea id="text-input" class="w-full p-3 bg-white text-black rounded-lg" rows="4" placeholder="Type your message..."></textarea>
+
+        <button id="generate-audio-btn" class="custom-button w-full mt-4">Generate Audio</button>
+
+        <!-- Text-to-Speech Loader -->
+        <div id="audio-spinner" class="flex-center mt-4 hidden">
+          <div class="custom-spinner"></div>
+          <p class="ml-3 text-orange-500">Generating your audio...</p>
+        </div>
+
+        <div id="audio-player" class="mt-4 hidden">
+          <audio id="audio" controls class="w-full shadow-lg rounded-lg"></audio>
+        </div>
+      </div>
+
+      <!-- File Upload & Transcribe Section -->
+      <div class="mb-12">
+        <h2 class="text-xl sm:text-2xl font-bold mb-4 text-gray-100">Upload Audio for Transcription</h2>
+        <div class="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4">
+          <input type="file" id="audio-upload" class="w-full text-gray-100">
+          <button id="transcribe-audio-btn" class="custom-button w-full sm:w-auto">Transcribe</button>
+        </div>
+
+        <!-- Transcription Loader -->
+        <div id="transcription-spinner" class="flex-center mt-4 hidden">
+          <div class="custom-spinner"></div>
+          <p class="ml-3 text-orange-500">Transcribing audio...</p>
+        </div>
+
+        <div id="transcription-output" class="mt-4 hidden">
+          <h3 class="text-xl font-semibold text-gray-200">Transcription:</h3>
+          <div id="transcription-text" class="transcription-box"></div>
+        </div>
+      </div>
+
+      <!-- Record Audio Section -->
+      <div class="mb-12">
+        <h2 class="text-xl sm:text-2xl font-bold mb-4 text-gray-100">Record Audio for Transcription</h2>
+        <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+          <button id="record-audio-btn" class="custom-button w-full sm:w-auto">Start Recording</button>
+          <button id="stop-recording-btn" class="custom-button w-full sm:w-auto bg-gray-500 hidden">Stop Recording</button>
+        </div>
+
+        <!-- Recording Loader -->
+        <div id="recording-spinner" class="flex-center mt-4 hidden">
+          <div class="custom-spinner"></div>
+          <p class="ml-3 text-orange-500">Recording...</p>
+        </div>
+
+        <!-- Submit Recorded Audio Button (Initially Hidden) -->
+        <div id="submit-recording" class="flex-center mt-4 hidden">
+          <button id="submit-recording-btn" class="custom-button w-full sm:w-auto">Submit Recorded Audio</button>
+        </div>
+
+        <!-- Transcribing Recorded Audio -->
+        <div id="recorded-transcription-spinner" class="flex-center mt-4 hidden">
+          <div class="custom-spinner"></div>
+          <p class="ml-3 text-orange-500">Transcribing your recorded audio...</p>
+        </div>
+
+        <div id="recorded-transcription-output" class="mt-4 hidden">
+          <h3 class="text-xl font-semibold text-gray-200">Recorded Audio Transcription:</h3>
+          <div id="recorded-transcription-text" class="transcription-box"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Text to Speech functionality
+    document.getElementById('generate-audio-btn').addEventListener('click', async () => {
+      const text = document.getElementById('text-input').value;
+      const audioSpinner = document.getElementById('audio-spinner');
+      const audioPlayer = document.getElementById('audio-player');
+
+      if (!text) {
+        alert("Please enter text to generate audio.");
+        return;
+      }
+
+      // Show loader and hide the player
+      audioSpinner.classList.remove('hidden');
+      audioPlayer.classList.add('hidden');
+
+      try {
+        const response = await fetch('/api/generate-audio/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text })
+        });
+
+        const data = await response.json();
+        audioSpinner.classList.add('hidden');
+
+        if (data.audioFile) {
+          audioPlayer.classList.remove('hidden');
+          document.getElementById('audio').src = data.audioFile;
+        }
+      } catch (error) {
+        console.error('Error generating audio:', error);
+        audioSpinner.classList.add('hidden');
+      }
+    });
+
+    // File Upload and Transcribe functionality
+    document.getElementById('transcribe-audio-btn').addEventListener('click', async () => {
+      const fileInput = document.getElementById('audio-upload');
+      const transcriptionSpinner = document.getElementById('transcription-spinner');
+      const transcriptionOutput = document.getElementById('transcription-output');
+
+      if (!fileInput.files.length) {
+        alert("Please select an audio file to transcribe.");
+        return;
+      }
+
+      // Show loader and hide output
+      transcriptionSpinner.classList.remove('hidden');
+      transcriptionOutput.classList.add('hidden');
+
+      const formData = new FormData();
+      formData.append('audio', fileInput.files[0]);
+
+      try {
+        const response = await fetch('/api/transcribe/', {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await response.json();
+        transcriptionSpinner.classList.add('hidden');
+
+        if (data.transcription) {
+          transcriptionOutput.classList.remove('hidden');
+          document.getElementById('transcription-text').innerText = data.transcription;
+        }
+      } catch (error) {
+        console.error('Error transcribing audio:', error);
+        transcriptionSpinner.classList.add('hidden');
+      }
+    });
+
+    // Audio Recording functionality
+    let mediaRecorder;
+    let audioChunks = [];
+
+    document.getElementById('record-audio-btn').addEventListener('click', async () => {
+      const recordButton = document.getElementById('record-audio-btn');
+      const stopButton = document.getElementById('stop-recording-btn');
+      const recordingSpinner = document.getElementById('recording-spinner');
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+
+        // Show recording loader and update buttons
+        recordingSpinner.classList.remove('hidden');
+        recordButton.classList.add('hidden');
+        stopButton.classList.remove('hidden');
+
+        mediaRecorder.start();
+        mediaRecorder.ondataavailable = (e) => {
+          audioChunks.push(e.data);
+        };
+      } catch (error) {
+        console.error('Error accessing microphone:', error);
+      }
+    });
+
+    document.getElementById('stop-recording-btn').addEventListener('click', () => {
+      const recordButton = document.getElementById('record-audio-btn');
+      const stopButton = document.getElementById('stop-recording-btn');
+      const recordingSpinner = document.getElementById('recording-spinner');
+      const submitRecordingButton = document.getElementById('submit-recording');
+
+      mediaRecorder.stop();
+
+      mediaRecorder.onstop = () => {
+        // Hide recording spinner and update buttons
+        recordingSpinner.classList.add('hidden');
+        stopButton.classList.add('hidden');
+        recordButton.classList.remove('hidden');
+
+        // Show submit button
+        submitRecordingButton.classList.remove('hidden');
+      };
+    });
+
+    document.getElementById('submit-recording-btn').addEventListener('click', async () => {
+      const submitRecordingButton = document.getElementById('submit-recording');
+      const recordedTranscriptionSpinner = document.getElementById('recorded-transcription-spinner');
+      const recordedTranscriptionOutput = document.getElementById('recorded-transcription-output');
+
+      const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+      const formData = new FormData();
+      formData.append('audio', audioBlob, 'recording.webm');
+
+      // Hide submit button and show transcribing spinner
+      submitRecordingButton.classList.add('hidden');
+      recordedTranscriptionSpinner.classList.remove('hidden');
+
+      try {
+        const response = await fetch('/api/record-transcribe/', {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await response.json();
+        recordedTranscriptionSpinner.classList.add('hidden');
+
+        if (data.transcription) {
+          recordedTranscriptionOutput.classList.remove('hidden');
+          document.getElementById('recorded-transcription-text').innerText = data.transcription;
+        }
+
+        audioChunks = [];
+      } catch (error) {
+        console.error('Error transcribing recorded audio:', error);
+        recordedTranscriptionSpinner.classList.add('hidden');
+      }
+    });
+  </script>
+</body>
+
+</html>
